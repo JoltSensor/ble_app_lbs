@@ -46,6 +46,8 @@
 #include "ble_debug_assert_handler.h"
 #include "pstorage.h"
 
+#include "ble_lbs.h"
+
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -55,9 +57,10 @@
 
 #define ADVERTISING_LED_PIN_NO          LED_0                                       /**< Is on when device is advertising. */
 #define CONNECTED_LED_PIN_NO            LED_1                                       /**< Is on when device has connected. */
-#define ASSERT_LED_PIN_NO               LED_7                                       /**< Is on when application has asserted. */
 
-#define DEVICE_NAME                     "Nordic_Template"                           /**< Name of device. Will be included in the advertising data. */
+#define LEDBUTTON_LED_PIN_NO						LED_0
+
+#define DEVICE_NAME                     "LedButtonDemo"                           /**< Name of device. Will be included in the advertising data. */
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
@@ -91,6 +94,7 @@
 
 static ble_gap_sec_params_t             m_sec_params;                               /**< Security requirements for this application. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+static ble_lbs_t                        m_lbs;
 
 // YOUR_JOB: Modify these according to requirements (e.g. if other event types are to pass through
 //           the scheduler).
@@ -111,7 +115,6 @@ void pstorage_sys_event_handler (uint32_t p_evt);
  */
 void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
 {
-    nrf_gpio_pin_set(ASSERT_LED_PIN_NO);
 
     // This call can be used for debug purposes during application development.
     // @note CAUTION: Activating this code will write the stack to flash on an error.
@@ -120,7 +123,7 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
     //                The flash write will happen EVEN if the radio is active, thus interrupting
     //                any communication.
     //                Use with care. Un-comment the line below to use.
-    // ble_debug_assert_handler(error_code, line_num, p_file_name);
+    ble_debug_assert_handler(error_code, line_num, p_file_name);
 
     // On assert, the system can only recover with a reset.
     NVIC_SystemReset();
@@ -166,9 +169,9 @@ static void service_error_handler(uint32_t nrf_error)
  */
 static void leds_init(void)
 {
-    nrf_gpio_cfg_output(ADVERTISING_LED_PIN_NO);
+    //nrf_gpio_cfg_output(ADVERTISING_LED_PIN_NO);
     nrf_gpio_cfg_output(CONNECTED_LED_PIN_NO);
-    nrf_gpio_cfg_output(ASSERT_LED_PIN_NO);
+	  nrf_gpio_cfg_output(LEDBUTTON_LED_PIN_NO);
 
     // YOUR_JOB: Add additional LED initialiazations if needed.
 }
@@ -254,12 +257,29 @@ static void advertising_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+static void led_write_handler(ble_lbs_t * p_lbs, uint8_t led_state)
+{
+	if (led_state)
+	{
+		nrf_gpio_pin_set(LEDBUTTON_LED_PIN_NO);
+	}
+	else
+	{
+		nrf_gpio_pin_clear(LEDBUTTON_LED_PIN_NO);
+	}
+} 
 
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void)
 {
-    // YOUR_JOB: Add code to initialize the services used by the application.
+    uint32_t err_code;
+		ble_lbs_init_t init;
+
+		init.led_write_handler = led_write_handler;
+
+		err_code = ble_lbs_init(&m_lbs, &init);
+		APP_ERROR_CHECK(err_code);
 }
 
 
@@ -477,6 +497,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     YOUR_JOB: Add service ble_evt handlers calls here, like, for example:
     ble_bas_on_ble_evt(&m_bas, p_ble_evt);
     */
+		ble_lbs_on_ble_evt(&m_lbs, p_ble_evt);
 }
 
 
