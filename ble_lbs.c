@@ -22,10 +22,6 @@
 #include "app_util.h"
 
 
-#define INVALID_BATTERY_LEVEL 255
-
-
-#if 0
 /**@brief Function for handling the Connect event.
  *
  * @param[in]   p_lbs       Battery Service structure.
@@ -56,34 +52,13 @@ static void on_disconnect(ble_lbs_t * p_lbs, ble_evt_t * p_ble_evt)
  */
 static void on_write(ble_lbs_t * p_lbs, ble_evt_t * p_ble_evt)
 {
-    if (p_lbs->is_notification_supported)
-    {
-        ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
-
-        if (
-            (p_evt_write->handle == p_lbs->battery_level_handles.cccd_handle)
-            &&
-            (p_evt_write->len == 2)
-           )
-        {
-            // CCCD written, call application event handler
-            if (p_lbs->evt_handler != NULL)
-            {
-                ble_lbs_evt_t evt;
-
-                if (ble_srv_is_notification_enabled(p_evt_write->data))
-                {
-                    evt.evt_type = BLE_LBS_EVT_NOTIFICATION_ENABLED;
-                }
-                else
-                {
-                    evt.evt_type = BLE_LBS_EVT_NOTIFICATION_DISABLED;
-                }
-
-                p_lbs->evt_handler(p_lbs, &evt);
-            }
-        }
-    }
+	ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+	if ((p_evt_write->handle == p_lbs->led_char_handles.value_handle) &&
+			(p_evt_write->len == 1) &&
+			(p_lbs->led_write_handler != NULL))
+	{
+		p_lbs->led_write_handler(p_lbs, p_evt_write->data[0]);
+	} 
 }
 
 
@@ -108,8 +83,6 @@ void ble_lbs_on_ble_evt(ble_lbs_t * p_lbs, ble_evt_t * p_ble_evt)
             break;
     }
 }
-
-#endif
 
 
 /**@brief Function for adding the Button characteristic.
@@ -216,8 +189,6 @@ static uint32_t led_char_add(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_ini
                                                  &p_lbs->led_char_handles);
 }
 
-uint32_t ble_lbs_on_button_change(ble_lbs_t * p_lbs, uint8_t button_state);
-
 uint32_t ble_lbs_init(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_init)
 {
     uint32_t   err_code;
@@ -245,13 +216,7 @@ uint32_t ble_lbs_init(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_init)
 		{
 			return err_code;
 		}
-	
-    err_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY, &ble_uuid, &p_lbs->service_handle);
-    if (err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
-		
+
 		// Add characteristics
 		err_code = button_char_add(p_lbs, p_lbs_init);
 		if (err_code != NRF_SUCCESS)
@@ -267,3 +232,16 @@ uint32_t ble_lbs_init(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_init)
     return NRF_SUCCESS;
 }
 
+uint32_t ble_lbs_on_button_change(ble_lbs_t * p_lbs, uint8_t button_state)
+{
+	ble_gatts_hvx_params_t params;
+	uint16_t len = sizeof(button_state);
+
+	memset(&params, 0, sizeof(params));
+	params.type = BLE_GATT_HVX_NOTIFICATION;
+	params.handle = p_lbs->button_char_handles.value_handle;
+	params.p_data = &button_state;
+	params.p_len = &len;
+
+	return sd_ble_gatts_hvx(p_lbs->conn_handle, &params);
+}
