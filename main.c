@@ -126,7 +126,7 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
     ble_debug_assert_handler(error_code, line_num, p_file_name);
 
     // On assert, the system can only recover with a reset.
-    NVIC_SystemReset();
+    //NVIC_SystemReset();
 }
 
 
@@ -234,14 +234,15 @@ static void gap_params_init(void)
  * @details Encodes the required advertising data and passes it to the stack.
  *          Also builds a structure to be passed to the stack when starting advertising.
  */
+
 static void advertising_init(void)
 {
     uint32_t      err_code;
     ble_advdata_t advdata;
+    ble_advdata_t scanrsp;
     uint8_t       flags = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
-    // YOUR_JOB: Use UUIDs for service(s) used in your application.
-    ble_uuid_t adv_uuids[] = {{BLE_UUID_BATTERY_SERVICE, BLE_UUID_TYPE_BLE}};
+    ble_uuid_t adv_uuids[] = {{LBS_UUID_SERVICE, m_lbs.uuid_type}};
 
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
@@ -250,10 +251,12 @@ static void advertising_init(void)
     advdata.include_appearance      = true;
     advdata.flags.size              = sizeof(flags);
     advdata.flags.p_data            = &flags;
-    advdata.uuids_complete.uuid_cnt = sizeof(adv_uuids) / sizeof(adv_uuids[0]);
-    advdata.uuids_complete.p_uuids  = adv_uuids;
-
-    err_code = ble_advdata_set(&advdata, NULL);
+    
+    memset(&scanrsp, 0, sizeof(scanrsp));
+    scanrsp.uuids_complete.uuid_cnt = sizeof(adv_uuids) / sizeof(adv_uuids[0]);
+    scanrsp.uuids_complete.p_uuids  = adv_uuids;
+    
+    err_code = ble_advdata_set(&advdata, &scanrsp);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -625,8 +628,9 @@ int main(void)
     ble_stack_init();
     scheduler_init();    
     gap_params_init();
+		services_init();
     advertising_init();
-    services_init();
+    
     conn_params_init();
     sec_params_init();
 

@@ -199,7 +199,6 @@ uint32_t ble_lbs_init(ble_lbs_t * p_lbs, const ble_lbs_init_t * p_lbs_init)
 		p_lbs->led_write_handler         = p_lbs_init->led_write_handler;
 
     // Add service
-    //BLE_UUID_BLE_ASSIGN(ble_uuid, BLE_UUID_BATTERY_SERVICE);
 
 		ble_uuid128_t base_uuid = LBS_UUID_BASE;
 		err_code = sd_ble_uuid_vs_add(&base_uuid, &p_lbs->uuid_type);
